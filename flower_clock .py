@@ -19,7 +19,7 @@ night_start = 18
 night_end = 8
 
 theta_start = night_start / 24 * 2*np.pi
-theta_end   = night_end / 24 * 2*np.pi
+theta_end   = night_end / 24 * 2*np.pihttps://github.com/kouzuma322/Plant/blob/main/flower_clock%20.py
 
 thetas1 = np.linspace(theta_start, 2*np.pi, 100, endpoint=False)
 thetas2 = np.linspace(0, theta_end, 100, endpoint=True)
@@ -68,7 +68,7 @@ ax.set_yticks([])
 
 # タイトル
 ax.set_title("メキシコ開花時刻 (8-18時,10L14D)（分布、同期度ベクトル＋平均時刻）",
-             va="bottom", fontname="Hiragino Sans", fontsize=14)
+             va="bottom", fontname="Hiragino Sans", fontsize=12)
 
 # 凡例（円グラフと重ならない位置）
 ax.legend(loc="upper left", bbox_to_anchor=(0.9, 1.0))
