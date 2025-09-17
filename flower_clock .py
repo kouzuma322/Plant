@@ -67,7 +67,7 @@ ax.set_theta_direction(-1)
 ax.set_yticks([])
 
 # タイトル
-ax.set_title("メキシコアサガオ開花時刻 (8-18時,10L14D)（分布、同期度ベクトル＋平均時刻）",
+ax.set_title("メキシコ開花時刻 (8-18時,10L14D)（分布、同期度ベクトル＋平均時刻）",
              va="bottom", fontname="Hiragino Sans", fontsize=14)
 
 # 凡例（円グラフと重ならない位置）
