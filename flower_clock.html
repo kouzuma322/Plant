@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>開花時刻グラフ</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+body { font-family: sans-serif; }
+input, textarea { width: 250px; }
+</style>
+</head>
+<body>
+
+<h2>開花時刻円グラフ（分布・同期度ベクトル・平均時刻）</h2>
+
+<div>
+  <label>昼咲 (時刻、スペース区切り)</label><br>
+  <textarea id="dayData">6:00 6:15 6:20</textarea><br><br>
+
+  <label>夜咲 (時刻、スペース区切り)</label><br>
+  <textarea id="nightData">19:00 19:20 19:00 20:00 19:10 18:40 19:40</textarea><br><br>
+
+  <label>交雑種 (時刻、スペース区切り)</label><br>
+  <textarea id="hybridData">0:20 23:55 23:30 23:55</textarea><br><br>
+
+  <label>暗期開始時刻 (0-24)</label><br>
+  <input type="number" id="nightStart" value="18"><br><br>
+
+  <label>暗期終了時刻 (0-24)</label><br>
+  <input type="number" id="nightEnd" value="8"><br><br>
+
+  <label>グラフタイトル</label><br>
+  <input type="text" id="chartTitle" value="メキシコ 開花開始時刻 8:00-18:00 (10L14D)"><br><br>
+
+  <button onclick="drawChart()">描画</button>
+</div>
+
+<div id="plot" style="width:600px;height:600px;"></div>
+
+<script>
+// --- 時刻文字列を正規化値(0-1)に変換 (スペース区切り) ---
+function parseTimeData(str) {
+  return str.trim().split(/\s+/).map(s=>{
+    const t = s.trim().split(':');
+    if(t.length !== 2) return NaN;
+    const h = parseInt(t[0]);
+    const m = parseInt(t[1]);
+    if(isNaN(h) || isNaN(m)) return NaN;
+    return (h + m/60)/24; // 0〜1に正規化
+  }).filter(v=>!isNaN(v));
+}
+
+// --- 平均ベクトル計算 ---
+function calcMeanVector(values) {
+  const angles = values.map(v => v*2*Math.PI);
+  const x = angles.map(a => Math.cos(a));
+  const y = angles.map(a => Math.sin(a));
+  const meanX = x.reduce((a,b)=>a+b,0)/x.length;
+  const meanY = y.reduce((a,b)=>a+b,0)/x.length;
+  const meanAngle = Math.atan2(meanY, meanX);
+  const R = Math.sqrt(meanX**2 + meanY**2);
+  return {angle: meanAngle, R: R};
+}
+
+function drawChart() {
+  const day = parseTimeData(document.getElementById('dayData').value);
+  const night = parseTimeData(document.getElementById('nightData').value);
+  const hybrid = parseTimeData(document.getElementById('hybridData').value);
+  const nightStart = parseFloat(document.getElementById('nightStart').value);
+  const nightEnd = parseFloat(document.getElementById('nightEnd').value);
+  const titleText = document.getElementById('chartTitle').value;
+
+  const dataGroups = [
+    {name:"昼咲", values:day, color:"red"},
+    {name:"夜咲", values:night, color:"blue"},
+    {name:"交雑種", values:hybrid, color:"green"}
+  ];
+
+  const traces = [];
+
+  // 暗期を円形で描画
+  function createNightSector(start, end) {
+    const sectors = [];
+    const startDeg = start/24*360;
+    const endDeg = end/24*360;
+    if(startDeg < endDeg){
+      sectors.push({
+        type:'barpolar',
+        r:[1],
+        theta:[(startDeg+endDeg)/2],
+        width:endDeg-startDeg,
+        marker:{color:'lightgray', opacity:0.3},
+        showlegend:false
+      });
+    } else {
+      sectors.push({
+        type:'barpolar',
+        r:[1],
+        theta:[(startDeg+360)/2],
+        width:360-startDeg,
+        marker:{color:'lightgray', opacity:0.3},
+        showlegend:false
+      });
+      sectors.push({
+        type:'barpolar',
+        r:[1],
+        theta:[endDeg/2],
+        width:endDeg,
+        marker:{color:'lightgray', opacity:0.3},
+        showlegend:false
+      });
+    }
+    return sectors;
+  }
+
+  traces.push(...createNightSector(nightStart, nightEnd));
+
+  // データと平均ベクトル
+  dataGroups.forEach(d=>{
+    const theta = d.values.map(v => (v*360)%360);
+    const r = new Array(theta.length).fill(1);
+
+    traces.push({
+      type:'scatterpolar',
+      r:r,
+      theta:theta,
+      mode:'markers',
+      marker:{size:6,color:d.color},
+      name:d.name
+    });
+
+    const mean = calcMeanVector(d.values);
+    const meanDeg = (mean.angle*180/Math.PI + 360) % 360;
+    const Rvec = mean.R;
+
+    // 平均ベクトル（線）
+    traces.push({
+      type:'scatterpolar',
+      r:[0, Rvec*0.95],
+      theta:[0, meanDeg],
+      mode:'lines',
+      line:{color:d.color,width:2},
+      showlegend:false
+    });
+
+    // 平均時刻ラベル
+    const labelR = Rvec*0.8;
+    const meanHour = (meanDeg/360*24) % 24;
+    const hourInt = Math.floor(meanHour);
+    const minInt = Math.floor((meanHour-hourInt)*60);
+    const label = `${hourInt.toString().padStart(2,'0')}:${minInt.toString().padStart(2,'0')}`;
+
+    traces.push({
+      type:'scatterpolar',
+      r:[labelR],
+      theta:[meanDeg],
+      mode:'text',
+      text:[label],
+      textposition:'top center',
+      showlegend:false
+    });
+  });
+
+  // 目盛り（2時間刻み）
+  const tickvals = [];
+  const ticktext = [];
+  for(let h=0; h<24; h+=2){
+    tickvals.push(h/24*360);
+    ticktext.push(`${h}:00`);
+  }
+
+  const layout = {
+    polar:{
+      radialaxis:{visible:false, range:[0,1.05]},
+      angularaxis:{
+        direction:"clockwise",
+        rotation:90,
+        tickmode:'array',
+        tickvals: tickvals,
+        ticktext: ticktext
+      }
+    },
+    showlegend:true,
+    title:titleText
+  };
+
+  Plotly.newPlot('plot', traces, layout, {responsive:true});
+}
+</script>
+
+</body>
+</html>
