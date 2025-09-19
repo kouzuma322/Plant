@@ -11,7 +11,7 @@ input, textarea { width: 250px; }
 </head>
 <body>
 
-<h2>開花時刻円グラフ（分布・同期度ベクトル・平均時刻）</h2>
+<h2>開花時刻円グラフ（分布・同期度ベクトル・平均時刻・R値）</h2>
 
 <div>
   <label>昼咲 (時刻、スペース区切り)</label><br>
@@ -120,6 +120,7 @@ function drawChart() {
     const theta = d.values.map(v => (v*360)%360);
     const r = new Array(theta.length).fill(1);
 
+    // データ点
     traces.push({
       type:'scatterpolar',
       r:r,
@@ -137,7 +138,7 @@ function drawChart() {
     traces.push({
       type:'scatterpolar',
       r:[0, Rvec*0.95],
-      theta:[0, meanDeg],
+      theta:[meanDeg, meanDeg],
       mode:'lines',
       line:{color:d.color,width:2},
       showlegend:false
@@ -157,6 +158,23 @@ function drawChart() {
       mode:'text',
       text:[label],
       textposition:'top center',
+      showlegend:false
+    });
+
+    // 同期度 R のラベル
+    let displayR = Math.round(Rvec*100)/100;  // 小数点第2位で四捨五入
+    if(displayR === 1 && Rvec < 1){          // 実際には1未満なのに四捨五入で1になった場合
+    displayR = 0.99;                     // 0.99 と表示
+  }
+
+     traces.push({
+      type:'scatterpolar',
+      r:[Rvec*0.3],
+      theta:[meanDeg],
+      mode:'text',
+      text:[`R=${displayR}`],
+      textposition:'bottom center',
+      textfont:{color: d.color, size: 12},
       showlegend:false
     });
   });
